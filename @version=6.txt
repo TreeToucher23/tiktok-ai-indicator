@@ -1,0 +1,172 @@
+//@version=6
+indicator("TradingPilotAI Pro", overlay = true, max_labels_count = 500, max_lines_count = 500)
+
+// ============================================================
+// INPUTS
+// ============================================================
+g_ema  = "EMA Settings"
+fastLen   = input.int(10, "Fast EMA Length", minval = 1, group = g_ema)
+slowLen   = input.int(20, "Slow EMA Length", minval = 1, group = g_ema)
+trendLen  = input.int(50, "Trend EMA Length", minval = 1, group = g_ema)
+atrLen    = input.int(10, "ATR Length", minval = 1, group = g_ema)
+
+g_fil  = "Filters"
+useTrendFilter = input.bool(true, "Use Trend EMA Filter", group = g_fil)
+useVWAPFilter  = input.bool(true, "Use VWAP Filter", group = g_fil)
+useCooldown    = input.bool(true, "Use Cooldown", group = g_fil)
+cooldownBars   = input.int(8, "Cooldown Bars", minval = 0, group = g_fil)
+
+g_disp = "Display"
+showLabels = input.bool(true, "Show BUY / SELL Labels", group = g_disp)
+showBG     = input.bool(false, "Show Background Bias", group = g_disp)
+labelSize  = input.string("small", "Label Size", options = ["tiny", "small", "normal"], group = g_disp)
+labelATR   = input.float(1.0, "Label Offset ATR Mult", minval = 0.1, step = 0.1, group = g_disp)
+
+// ============================================================
+// CORE CALCULATIONS
+// ============================================================
+fast_ema  = ta.ema(close, fastLen)
+slow_ema  = ta.ema(close, slowLen)
+trend_ema = ta.ema(close, trendLen)
+
+kc_mid = ta.ema(close, 20)
+kc_atr = ta.atr(atrLen)
+
+vwap_val = ta.vwap(close)
+
+is_up   = fast_ema > slow_ema
+is_down = fast_ema < slow_ema
+
+trendLongOk  = not useTrendFilter or (close > trend_ema and fast_ema > trend_ema)
+trendShortOk = not useTrendFilter or (close < trend_ema and fast_ema < trend_ema)
+
+vwapLongOk   = not useVWAPFilter or close > vwap_val
+vwapShortOk  = not useVWAPFilter or close < vwap_val
+
+rawLong  = ta.crossover(fast_ema, slow_ema) and trendLongOk and vwapLongOk
+rawShort = ta.crossunder(fast_ema, slow_ema) and trendShortOk and vwapShortOk
+
+// ============================================================
+// COOLDOWN
+// ============================================================
+var int lastSignalBar = na
+cooldownOk = not useCooldown or na(lastSignalBar) or (bar_index - lastSignalBar > cooldownBars)
+
+longSignal  = rawLong and cooldownOk
+shortSignal = rawShort and cooldownOk
+
+if longSignal or shortSignal
+    lastSignalBar := bar_index
+
+// ============================================================
+// COLORS
+// ============================================================
+G_CORE   = #00ff88
+R_CORE   = #ff1155
+B_CORE   = #3d8bff
+Y_CORE   = #ffd400
+main_clr = is_up ? G_CORE : R_CORE
+
+// ============================================================
+// GRADIENT ENGINE
+// ============================================================
+p_mid = plot(kc_mid, display = display.none)
+
+u01 = plot(kc_mid + 0.2 * kc_atr, display = display.none)
+u02 = plot(kc_mid + 0.4 * kc_atr, display = display.none)
+u03 = plot(kc_mid + 0.6 * kc_atr, display = display.none)
+u04 = plot(kc_mid + 0.8 * kc_atr, display = display.none)
+u05 = plot(kc_mid + 1.0 * kc_atr, display = display.none)
+u06 = plot(kc_mid + 1.2 * kc_atr, display = display.none)
+u07 = plot(kc_mid + 1.4 * kc_atr, display = display.none)
+u08 = plot(kc_mid + 1.6 * kc_atr, display = display.none)
+u09 = plot(kc_mid + 1.8 * kc_atr, display = display.none)
+u10 = plot(kc_mid + 2.0 * kc_atr, display = display.none)
+u11 = plot(kc_mid + 2.2 * kc_atr, display = display.none)
+u12 = plot(kc_mid + 2.5 * kc_atr, display = display.none)
+
+l01 = plot(kc_mid - 0.2 * kc_atr, display = display.none)
+l02 = plot(kc_mid - 0.4 * kc_atr, display = display.none)
+l03 = plot(kc_mid - 0.6 * kc_atr, display = display.none)
+l04 = plot(kc_mid - 0.8 * kc_atr, display = display.none)
+l05 = plot(kc_mid - 1.0 * kc_atr, display = display.none)
+l06 = plot(kc_mid - 1.2 * kc_atr, display = display.none)
+l07 = plot(kc_mid - 1.4 * kc_atr, display = display.none)
+l08 = plot(kc_mid - 1.6 * kc_atr, display = display.none)
+l09 = plot(kc_mid - 1.8 * kc_atr, display = display.none)
+l10 = plot(kc_mid - 2.0 * kc_atr, display = display.none)
+l11 = plot(kc_mid - 2.2 * kc_atr, display = display.none)
+l12 = plot(kc_mid - 2.5 * kc_atr, display = display.none)
+
+fill(p_mid, u01, color.new(main_clr, 60))
+fill(p_mid, l01, color.new(main_clr, 60))
+fill(u01, u02, color.new(main_clr, 65))
+fill(l01, l02, color.new(main_clr, 65))
+fill(u02, u03, color.new(main_clr, 70))
+fill(l02, l03, color.new(main_clr, 70))
+fill(u03, u04, color.new(main_clr, 75))
+fill(l03, l04, color.new(main_clr, 75))
+fill(u04, u05, color.new(main_clr, 80))
+fill(l04, l05, color.new(main_clr, 80))
+fill(u05, u06, color.new(main_clr, 83))
+fill(l05, l06, color.new(main_clr, 83))
+fill(u06, u07, color.new(main_clr, 86))
+fill(l06, l07, color.new(main_clr, 86))
+fill(u07, u08, color.new(main_clr, 89))
+fill(l07, l08, color.new(main_clr, 89))
+fill(u08, u09, color.new(main_clr, 92))
+fill(l08, l09, color.new(main_clr, 92))
+fill(u09, u10, color.new(main_clr, 95))
+fill(l09, l10, color.new(main_clr, 95))
+fill(u10, u11, color.new(main_clr, 97))
+fill(l10, l11, color.new(main_clr, 97))
+fill(u11, u12, color.new(main_clr, 99))
+fill(l11, l12, color.new(main_clr, 99))
+
+// ============================================================
+// PLOTS
+// ============================================================
+p_ema1 = plot(fast_ema, color = color.new(main_clr, 0), linewidth = 2, title = "Fast EMA")
+p_ema2 = plot(slow_ema, color = color.new(main_clr, 10), linewidth = 2, title = "Slow EMA")
+plot(useTrendFilter ? trend_ema : na, color = color.new(B_CORE, 0), linewidth = 2, title = "Trend EMA")
+plot(useVWAPFilter ? vwap_val : na, color = color.new(Y_CORE, 0), linewidth = 2, title = "VWAP")
+
+fill(p_ema1, p_ema2, color.new(color.white, 25))
+fill(p_ema1, p_ema2, color.new(main_clr, 15))
+
+// ============================================================
+// LABEL SIZE MAP
+// ============================================================
+label_size = labelSize == "tiny" ? size.tiny : labelSize == "normal" ? size.normal : size.small
+
+// ============================================================
+// SIGNAL LABELS
+// ============================================================
+offset = ta.atr(14) * labelATR
+
+if longSignal and showLabels
+    label.new(
+         bar_index, low - offset, "BUY",
+         color = G_CORE,
+         textcolor = color.black,
+         style = label.style_label_up,
+         size = label_size)
+
+if shortSignal and showLabels
+    label.new(
+         bar_index, high + offset, "SELL",
+         color = R_CORE,
+         textcolor = color.white,
+         style = label.style_label_down,
+         size = label_size)
+
+// ============================================================
+// BACKGROUND
+// ============================================================
+bgcolor(showBG ? (is_up ? color.new(G_CORE, 98) : color.new(R_CORE, 98)) : na)
+
+// ============================================================
+// ALERTS
+// ============================================================
+alertcondition(longSignal, "BUY Signal", "TradingPilotAI Pro BUY signal")
+alertcondition(shortSignal, "SELL Signal", "TradingPilotAI Pro SELL signal")
